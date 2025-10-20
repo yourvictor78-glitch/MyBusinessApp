@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Admin Panel - Task Add Karen</h2>
+    <p>Welcome, {{ session['username'] }}!</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h3>Naya Task Add Karen</h3>
+    <form action="{{ url_for('admin') }}" method="POST">
+        <div>
+            <label for="keyword">Keyword / Task:</label>
+            <input type="text" id="keyword" name="keyword" required style="width: 300px;">
+        </div>
+        <br>
+        <div>
+            <label for="assigned_to">Assign to (Team Member Name):</label>
+            <input type="text" id="assigned_to" name="assigned_to" required style="width: 300px;">
+        </div>
+        <br>
+        <p><i>Task Date aur Due Date (+10 din) automatic add ho jayen gi.</i></p>
+        <button type="submit">Add Task</button>
+    </form>
+    
+    <hr>
+
+    <h3>Tamam Tasks ki History</h3>
+    <table border="1" style="width:100%; border-collapse: collapse;" cellpadding="5">
+        <thead>
+            <tr>
+                <th>Task ID</th>
+                <th>Keyword</th>
+                <th>Assigned To</th>
+                <th>Task Date</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Completion Link</th> 
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in tasks %}
+            <tr>
+                <td>{{ task['id'] }}</td>
+                <td>{{ task['keyword'] }}</td>
+                <td>{{ task['assigned_to'] }}</td>
+                <td>{{ task['task_date'] }}</td>
+                <td>{{ task['due_date'] }}</td>
+                <td style="color: {% if task['status'] == 'Pending' %}red{% else %}green{% endif %};">
+                    {{ task['status'] }}
+                </td>
+                
+                <td>
+                    {% if task['completion_link'] %}
+                        <a href="{{ task['completion_link'] }}" target="_blank">View Proof</a>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

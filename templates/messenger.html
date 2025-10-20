@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Team Messenger</h2>
+
+    <div style="border: 1px solid #ccc; height: 400px; overflow-y: scroll; padding: 10px; margin-bottom: 20px; background-color: #fafafa;">
+        {% for msg in messages %}
+            <div>
+                <small style="color: #555;">{{ msg['timestamp'] | timeago }}</small><br>
+                
+                <strong>{{ msg['sender_name'] }}:</strong>
+                <p style="margin: 0 0 10px 0;">{{ msg['message_body'] }}</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <form action="{{ url_for('messenger') }}" method="POST">
+        <div>
+            <label for="sender_name">Aap ka Naam:</label>
+            <input type="text" id="sender_name" name="sender_name" required>
+        </div>
+        <br>
+        <div>
+            <label for="message_body">Aap ka Message:</label>
+            <textarea id="message_body" name="message_body" rows="3" style="width: 90%;" required></textarea>
+        </div>
+        <br>
+        <button type="submit">Send Message</button>
+    </form>
+{% endblock %}

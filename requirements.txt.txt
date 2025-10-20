@@ -1,0 +1,5 @@
+Flask
+werkzeug
+gunicorn
+psycopg2-binary  # Nayi PostgreSQL library
+python-dotenv    # Local testing ke liye (optional)
