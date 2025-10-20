@@ -1,33 +1,25 @@
-# database_setup.py (FULL REPLACEMENT - PostgreSQL)
+# database_setup.py (FULL REPLACEMENT - SQLite Version)
 
-import os
-import sys
-import psycopg2
+import sqlite3
 from werkzeug.security import generate_password_hash
-from dotenv import load_dotenv
+import sys
 
-# Local testing ke liye environment variables load karen
-load_dotenv() 
+# --- Database file ka naam ---
+DATABASE_NAME = 'app_database.db'
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if not DATABASE_URL:
-    print("Error: DATABASE_URL environment variable set nahi hai.")
-    print("Database URL set kiye bagair yeh script nahi chal sakta.")
-    sys.exit(1)
-
-print("PostgreSQL database setup script shuru ho raha hai...")
+print(f"SQLite database setup script shuru ho raha hai ({DATABASE_NAME})...")
 
 try:
     # Database se connect karen
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
 
-    # 1. 'users' table (PostgreSQL syntax)
+    # 1. 'users' table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(80) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL
+        id INTEGER PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL
     );
     ''')
     print("Users table check/create ho gaya.")
@@ -35,12 +27,12 @@ try:
     # 2. 'tasks' table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS tasks (
-        id SERIAL PRIMARY KEY,
-        keyword VARCHAR(255) NOT NULL,
-        assigned_to VARCHAR(80) NOT NULL,
-        task_date DATE NOT NULL,
-        due_date DATE NOT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'Pending',
+        id INTEGER PRIMARY KEY,
+        keyword TEXT NOT NULL,
+        assigned_to TEXT NOT NULL,
+        task_date TEXT NOT NULL,
+        due_date TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'Pending',
         completion_link TEXT
     );
     ''')
@@ -49,10 +41,10 @@ try:
     # 3. 'messages' table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        sender_name VARCHAR(80) NOT NULL,
+        id INTEGER PRIMARY KEY,
+        sender_name TEXT NOT NULL,
         message_body TEXT NOT NULL,
-        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        timestamp TEXT NOT NULL
     );
     ''')
     print("Messages table check/create ho gaya.")
@@ -60,15 +52,15 @@ try:
 
     # --- Admin User Add Karna ---
     admin_username = 'admin'
-    admin_password = 'your_secret_password_123' # <-- YAHAN APNA PASSWORD LIKHEN
+    admin_password = 'your_secret_password_123' # <-- YAHAN APNA PASSWORD RAKHEN
 
-    cursor.execute("SELECT id FROM users WHERE username = %s", (admin_username,))
+    cursor.execute("SELECT id FROM users WHERE username = ?", (admin_username,))
     admin_user_exists = cursor.fetchone()
 
     if admin_user_exists is None:
         hashed_password = generate_password_hash(admin_password)
         
-        cursor.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", 
+        cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", 
                        (admin_username, hashed_password))
         print(f"Admin user '{admin_username}' banaya gaya hai. Password: {admin_password}")
     else:
@@ -80,6 +72,6 @@ try:
     conn.close()
     print("Database setup complete.")
 
-except psycopg2.Error as e:
-    print(f"\nFATAL: Database connection ya SQL error aa gaya: {e}")
+except sqlite3.Error as e:
+    print(f"\nFATAL: Database error aa gaya: {e}")
     sys.exit(1)

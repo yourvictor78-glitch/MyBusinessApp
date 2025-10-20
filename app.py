@@ -1,23 +1,22 @@
-# app.py (FULL REPLACEMENT)
+# app.py (FULL REPLACEMENT - SQLite Version)
 
-# --- Zarori Libraries Import Karna ---
 import os
-import psycopg2 # Ab PostgreSQL use karen ge
-from psycopg2.extras import RealDictCursor # Data ko dictionary ki tarah access karny ke liye
+import sqlite3 # Wapas SQLite use karen ge
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash 
 
-# Local testing ke liye (Aap isko delete kar sakte hain agar aapko local test nahi karna)
-from dotenv import load_dotenv
-load_dotenv() 
+# --- Database file ka naam aur path set karen ---
+# PythonAnywhere mein file system thoda alag hota hai, isliye sirf naam istemal karen ge.
+DATABASE_NAME = 'app_database.db'
 
 # --- Function: Time Ago Filter (Corrected) ---
 def format_time_ago(timestamp_str):
     """Timestamp string ko human-readable 'time ago' format mein badalta hai."""
     try:
-        # PostgreSQL timestamp ko handle karny ke liye
+        # SQLite aur general timestamp ko handle karny ke liye
         if isinstance(timestamp_str, str):
+            # Split karna zaroori hai agar microsecond bhi ho
             message_time = datetime.strptime(timestamp_str.split('.')[0], '%Y-%m-%d %H:%M:%S')
         elif isinstance(timestamp_str, datetime):
             message_time = timestamp_str
@@ -56,17 +55,13 @@ def format_time_ago(timestamp_str):
 # --- Flask App Shuru Karna ---
 app = Flask(__name__)
 app.jinja_env.filters['timeago'] = format_time_ago
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret-key-for-local-use')
+app.config['SECRET_KEY'] = 'ye-koi-secret-key-yahan-dalen' # Secret Key seedha yahan set karen
 
-# Database URL Environment Variable se len ge
-DATABASE_URL = os.environ.get('DATABASE_URL') 
-if not DATABASE_URL:
-    print("FATAL ERROR: DATABASE_URL environment variable is not set!")
-    
 # --- Database se Connect Karny ka Helper Function ---
 def get_db_connection():
-    # Cursor factory ko RealDictCursor set karen taake data dictionary ki tarah mile
-    conn = psycopg2.connect(DATABASE_URL)
+    # Row Factory se data dictionary ki tarah milega
+    conn = sqlite3.connect(DATABASE_NAME)
+    conn.row_factory = sqlite3.Row 
     return conn
 
 # --- 1. Home Page ---
@@ -85,9 +80,9 @@ def login():
         password = request.form['password']
         
         conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        # PostgreSQL mein '?' ke bajaye '%s' use hota hai
-        cur.execute('SELECT * FROM users WHERE username = %s', (username,))
+        cur = conn.cursor()
+        # SQLite mein '?' use hota hai
+        cur.execute('SELECT * FROM users WHERE username = ?', (username,))
         user = cur.fetchone()
         conn.close()
 
@@ -108,14 +103,14 @@ def admin():
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
     
     if request.method == 'POST':
         keyword = request.form['keyword']
         assigned_to = request.form['assigned_to']
         
-        # PostgreSQL mein CURRENT_DATE ya now() use hota hai
-        cur.execute('INSERT INTO tasks (keyword, assigned_to, task_date, due_date) VALUES (%s, %s, now()::date, (now() + interval \'10 days\')::date)',
+        # SQLite mein datetime('now') use hota hai
+        cur.execute('INSERT INTO tasks (keyword, assigned_to, task_date, due_date) VALUES (?, ?, date(\'now\'), date(\'now\', \'+10 days\'))',
                      (keyword, assigned_to))
         conn.commit()
         flash('Naya task kamyabi se add ho gaya!', 'success')
@@ -130,9 +125,9 @@ def admin():
 @app.route('/tasks')
 def task_list():
     conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
     # Status check karen
-    cur.execute('SELECT * FROM tasks WHERE status = %s ORDER BY due_date ASC', ('Pending',))
+    cur.execute('SELECT * FROM tasks WHERE status = ? ORDER BY due_date ASC', ('Pending',))
     pending_tasks = cur.fetchall()
     conn.close()
     
@@ -146,7 +141,7 @@ def complete_task(task_id):
     conn = get_db_connection()
     cur = conn.cursor()
     # Task ko complete mark karen aur link ko save karen
-    cur.execute('UPDATE tasks SET status = %s, completion_link = %s WHERE id = %s', 
+    cur.execute('UPDATE tasks SET status = ?, completion_link = ? WHERE id = ?', 
                  ('Completed', completion_link, task_id))
     conn.commit()
     conn.close()
@@ -158,7 +153,7 @@ def complete_task(task_id):
 @app.route('/messenger', methods=['GET', 'POST'])
 def messenger():
     conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
 
     if request.method == 'POST':
         sender_name = request.form['sender_name']
@@ -166,7 +161,7 @@ def messenger():
         
         if sender_name and message_body:
             # Timestamp automatic save ho jaye ga
-            cur.execute('INSERT INTO messages (sender_name, message_body) VALUES (%s, %s)',
+            cur.execute('INSERT INTO messages (sender_name, message_body, timestamp) VALUES (?, ?, datetime(\'now\'))',
                          (sender_name, message_body))
             conn.commit()
             conn.close()
@@ -186,5 +181,5 @@ def logout():
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
-    # Local test ke liye, pehle aapko DATABASE_URL environment variable set karna hoga
+    # Local test ke liye
     app.run(debug=True)
